@@ -31,6 +31,7 @@ PHDRS
 	text PT_LOAD FLAGS(PHDRS_PF_RX);
 	rodata PT_LOAD FLAGS(PHDRS_PF_R);
 	data PT_LOAD;
+	notes PT_NOTE;
 	tls PT_TLS;
 	tls_load PT_LOAD;
 	stack PT_GNU_STACK FLAGS(PHDRS_PF_RW);
@@ -41,6 +42,11 @@ SECTIONS
 	. = 0x100000;
 
 	_base_addr = .;		/* Symbol to represent the load base address */
+
+	.notes :
+	{
+		KEEP (*(.note.Xen))
+	} :notes
 
 	/* Code */
 	_text = .;

@@ -42,6 +42,11 @@ config KVM_BOOT_PROTO_LXBOOT
 	help
 		Linux 64-bit Boot Protocol
 
+config KVM_BOOT_PROTO_PVH
+	bool "ELF PVH"
+	help
+		PVH direct boot
+
 config KVM_BOOT_PROTO_QEMU_VIRT
 	bool "QEMU virt"
 	depends on KVM_VMM_QEMU && !KVM_VMM_FIRECRACKER && ARCH_ARM_64
