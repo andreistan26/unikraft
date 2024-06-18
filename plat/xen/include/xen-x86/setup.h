@@ -42,6 +42,8 @@
 
 extern char _libxenplat_bootstack[];
 
+#if defined(XEN_PARAVIRT)
 extern start_info_t *HYPERVISOR_start_info;
+#endif
 
 #endif /* __SETUP_H__ */

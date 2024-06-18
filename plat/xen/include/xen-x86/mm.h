@@ -27,6 +27,7 @@
 
 #include <uk/plat/common/sections.h>
 #include <uk/plat/memory.h>
+#include <uk/plat/io.h>
 #ifndef __ASSEMBLY__
 #include <xen/xen.h>
 #if defined(__x86_64__)
@@ -43,7 +44,7 @@
 #define CONST(x) x
 #endif
 
-#ifdef XEN_PARAVIRT
+#if defined(XEN_PARAVIRT)
 #include <xen-x86/mm_pv.h>
 #endif
 
@@ -173,8 +174,6 @@ typedef unsigned long maddr_t;
 extern pgentry_t *pt_base;
 #ifdef XEN_PARAVIRT
 extern unsigned long *phys_to_machine_mapping;
-#endif
-
 extern unsigned long mfn_zero;
 static __inline__ maddr_t phys_to_machine(paddr_t phys)
 {
@@ -189,18 +188,30 @@ static __inline__ paddr_t machine_to_phys(maddr_t machine)
 	phys = (phys << PAGE_SHIFT) | (machine & ~PAGE_MASK);
 	return phys;
 }
+#endif
 
+#ifdef XEN_PARAVIRT
 #define VIRT_START                 ((unsigned long)(__TEXT))
+#else
+#define VIRT_START		   0
+#endif
 
+#ifdef XEN_PARAVIRT
 #define to_phys(x)                 ((unsigned long)(x)-VIRT_START)
+#else
+#define to_phys(x)		   ukplat_virt_to_phys(x)
+#endif
 #define to_virt(x)                 ((void *)((unsigned long)(x)+VIRT_START))
-
 #define virt_to_pfn(_virt)         (PFN_DOWN(to_phys(_virt)))
 #define virt_to_mfn(_virt)         (pfn_to_mfn(virt_to_pfn(_virt)))
 #define mach_to_virt(_mach)        (to_virt(machine_to_phys(_mach)))
 #define virt_to_mach(_virt)        (phys_to_machine(to_phys(_virt)))
 #define mfn_to_virt(_mfn)          (to_virt(mfn_to_pfn(_mfn) << PAGE_SHIFT))
 #define pfn_to_virt(_pfn)          (to_virt((_pfn) << PAGE_SHIFT))
+
+#ifndef XEN_PARAVIRT
+#define pfn_to_mfn(__pfn)	   ((unsigned long) __pfn)
+#endif
 
 /* Pagetable walking. */
 #define pte_to_mfn(_pte)           (((_pte) & (PADDR_MASK&PAGE_MASK)) >> L1_PAGETABLE_SHIFT)

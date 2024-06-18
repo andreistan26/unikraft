@@ -34,6 +34,7 @@
 #if defined(__X86_32__) || defined(__x86_64__)
 #include <xen-x86/irq.h>
 #include <x86/cpu.h>
+#include <uk/plat/common/irq.h>
 #elif (defined __ARM_32__) || (defined __ARM_64__)
 #include <xen-arm/os.h>
 #include <arm/cpu.h>
@@ -42,7 +43,9 @@
 #error "Unsupported architecture"
 #endif
 #include <uk/plat/lcpu.h>
+#include <uk/plat/common/lcpu.h>
 #include <uk/plat/time.h>
+#include <uk/arch/ctx.h>
 
 void ukplat_lcpu_enable_irq(void)
 {
@@ -58,9 +61,8 @@ void ukplat_lcpu_halt_irq(void)
 {
 	UK_ASSERT(ukplat_lcpu_irqs_disabled());
 
-	ukplat_lcpu_enable_irq();
-	halt();
-	ukplat_lcpu_disable_irq();
+	local_irq_enable_halt();
+	local_irq_disable();
 }
 
 unsigned long ukplat_lcpu_save_irqf(void)
@@ -84,10 +86,18 @@ int ukplat_lcpu_irqs_disabled(void)
 
 void ukplat_lcpu_set_auxsp(__uptr auxsp)
 {
-	lcpu_get_current()->auxsp = auxsp;
+	struct lcpu *lcpu = lcpu_get_current();
+	struct ukarch_auxspcb *auxspcb;
+
+	UK_ASSERT(IS_LCPU_PTR(rdgsbase()));
+
+	lcpu->auxsp = auxsp;
+	auxspcb = ukarch_auxsp_get_cb(auxsp);
+	ukarch_sysctx_set_gsbase(&auxspcb->uksysctx, (__uptr)lcpu);
 }
 
 __uptr ukplat_lcpu_get_auxsp(void)
 {
+	UK_ASSERT(IS_LCPU_PTR(lcpu_get_current()));
 	return lcpu_get_current()->auxsp;
 }

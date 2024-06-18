@@ -37,6 +37,7 @@
 #include <xen-arm/smp.h>
 #endif
 
+#include <xen-x86/mm.h>
 #include <xen/memory.h>
 #include <xen/hvm/hvm_op.h>
 #include <uk/arch/lcpu.h>
@@ -47,6 +48,51 @@
 	((sh)->evtchn_pending[idx] & ~(sh)->evtchn_mask[idx])
 
 int in_callback;
+
+#if ! defined(XEN_PARAVIRT)
+/* Get shared info from Xen */
+shared_info_t *map_shared_info()
+{
+    struct xen_add_to_physmap xatp;
+    extern shared_info_t _libxenplat_shared_info;
+
+    xatp.domid = DOMID_SELF;
+    xatp.idx = 0;
+    xatp.space = XENMAPSPACE_shared_info;
+    xatp.gpfn = PFN_DOWN((size_t)&_libxenplat_shared_info);
+    if ( HYPERVISOR_memory_op(XENMEM_add_to_physmap, &xatp) != 0 )
+        return NULL;
+
+    return &_libxenplat_shared_info;
+}
+#endif
+
+int hvm_get_parameter(int idx, uint64_t *value)
+{
+    struct xen_hvm_param xhv;
+    int ret;
+
+    xhv.domid = DOMID_SELF;
+    xhv.index = idx;
+    ret = HYPERVISOR_hvm_op(HVMOP_get_param, &xhv);
+    UK_ASSERT(ret >= 0);
+
+    *value = xhv.value;
+
+    return ret;
+}
+
+int hvm_set_parameter(int idx, uint64_t value)
+{
+    struct xen_hvm_param xhv;
+
+    xhv.domid = DOMID_SELF;
+    xhv.index = idx;
+    xhv.value = value;
+
+    return HYPERVISOR_hvm_op(HVMOP_set_param, &xhv);
+}
+
 
 void do_hypervisor_callback(struct __regs *regs)
 {

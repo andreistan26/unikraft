@@ -106,6 +106,9 @@
 #define local_irq_disable()      __cli()
 #define local_irq_enable()       __sti()
 
-#endif
+#else
 
+#include <x86/irq.h>
+
+#endif
 #endif /* PLAT_XEN_INCLUDE_XEN_X86_IRQ_H_ */

@@ -129,5 +129,7 @@ void uk_boot_early_init(struct ukplat_bootinfo *bi)
 UK_BOOT_EARLYTAB_ENTRY(uk_boot_early_init_parse_cmdl, UK_PRIO_EARLIEST);
 
 /* Reserve UK_PRIO_LATEST for post-coalesce operations */
+#ifndef CONFIG_XEN_PVH
 UK_BOOT_EARLYTAB_ENTRY(uk_boot_early_init_mrd_coalesce,
 		       UK_PRIO_BEFORE(UK_PRIO_LATEST));
+#endif

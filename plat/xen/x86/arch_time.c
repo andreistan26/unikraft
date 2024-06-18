@@ -41,8 +41,12 @@
 #include <uk/plat/common/_time.h>
 #include <common/hypervisor.h>
 #include <common/events.h>
-#include <xen-x86/irq.h>
 #include <uk/assert.h>
+#ifdef XEN_PARAVIRT
+#include <xen-x86/irq.h>
+#else
+#include <uk/plat/common/irq.h>
+#endif
 
 /************************************************************************
  * Time functions
@@ -198,7 +202,13 @@ void time_block_until(__snsec until)
 
 	if ((__snsec) ukplat_monotonic_clock() < until) {
 		HYPERVISOR_set_timer_op(until);
-		ukplat_lcpu_halt_irq();
+#ifdef XEN_PARAVIRT
+		HYPERVISOR_sched_op(SCHEDOP_block, 0);
+#else
+		local_irq_enable();
+		asm volatile ( "hlt" : : : "memory" );
+#endif
+		local_irq_disable();
 		HYPERVISOR_set_timer_op(0);
 	}
 }

@@ -87,6 +87,12 @@
 #include <common/hypervisor.h>
 #include <xen/xen.h>
 
+#if !defined(XEN_PARAVIRT)
+#include <uk/plat/paging.h>
+#include <xen/hvm/params.h>
+static uint64_t ring_pfn;
+#endif
+
 #if (defined __X86_32__) || (defined __X86_64__)
 #include <xen-x86/setup.h>
 #include <xen-x86/mm.h>
@@ -109,7 +115,7 @@
 #include <xen/io/ring.h>
 
 static struct xencons_interface *console_ring;
-static uint32_t console_evtchn;
+static uint64_t console_evtchn;
 static int console_ready;
 
 /*
@@ -267,17 +273,38 @@ static struct uk_console_ops console_ops = {
 
 static struct uk_console console_dev;
 
-#ifdef XEN_PARAVIRT
 static int hv_console_prepare(struct ukplat_bootinfo *bi __unused)
 {
+#ifdef XEN_PARAVIRT
 	console_ring = mfn_to_virt(HYPERVISOR_start_info->console.domU.mfn);
 	console_evtchn = HYPERVISOR_start_info->console.domU.evtchn;
+#else /* PVH */
+	UK_ASSERT(hvm_get_parameter(HVM_PARAM_CONSOLE_EVTCHN, &console_evtchn) == 0);
+	UK_ASSERT(hvm_get_parameter(HVM_PARAM_CONSOLE_PFN, &ring_pfn) == 0);
+
+	/* The first 4GB are identity mapped so PFN = virtual page number
+	 * Xen specialpages are under the 4GB limit
+	 * */
+
+	struct uk_pagetable *pt = ukplat_pt_get_active();
+	int rc = ukplat_page_map(pt, ring_pfn << PAGE_SHIFT, ring_pfn << PAGE_SHIFT, 1, PAGE_ATTR_PROT_RW, 0);
+	if (rc == -EEXIST) {
+		rc = ukplat_page_unmap(pt, ring_pfn << PAGE_SHIFT, 1, 0);
+		UK_ASSERT(rc == 0);
+		rc = ukplat_page_map(pt, ring_pfn << PAGE_SHIFT, ring_pfn << PAGE_SHIFT, 1, PAGE_ATTR_PROT_RW, 0);
+		UK_ASSERT(rc == 0);
+	}
+
+	console_ring = (struct xencons_interface *)(ring_pfn << PAGE_SHIFT);
+#endif
 	uk_console_init(&console_dev, "XenConsole", &console_ops,
 			UK_CONSOLE_FLAG_STDOUT | UK_CONSOLE_FLAG_STDIN);
 	uk_console_register(&console_dev);
+
+	hv_console_init(bi);
+
 	return 0;
 }
-#endif
 
 #if defined(__aarch64__)
 static int hv_console_prepare(struct ukplat_bootinfo *bi __unused)
@@ -288,11 +315,13 @@ static int hv_console_prepare(struct ukplat_bootinfo *bi __unused)
 	uk_console_init(&console_dev, "XenConsole", &console_ops,
 			UK_CONSOLE_FLAG_STDOUT | UK_CONSOLE_FLAG_STDIN);
 	uk_console_register(&console_dev);
+
+	hv_console_init(bi);
+
 	return 0;
 }
 #endif
 
-UK_BOOT_EARLYTAB_ENTRY(hv_console_prepare, UK_PRIO_AFTER(UK_PRIO_EARLIEST));
 
-/* NOTE: `init_events()` should be called before calling `hv_console_init`. */
-UK_BOOT_EARLYTAB_ENTRY(hv_console_init, UK_PRIO_LATEST);
+/* NOTE: `init_events()` should be called before calling `hv_console_prepare`. */
+UK_BOOT_EARLYTAB_ENTRY(hv_console_prepare, UK_PRIO_LATEST);

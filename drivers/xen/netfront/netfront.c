@@ -39,6 +39,7 @@
 #include <uk/print.h>
 #include <uk/alloc.h>
 #include <uk/netdev_driver.h>
+#include <uk/plat/lcpu.h>
 #if defined(__i386__) || defined(__x86_64__)
 #include <xen-x86/mm.h>
 #include <xen-x86/irq.h>

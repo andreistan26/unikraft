@@ -2,10 +2,8 @@ menuconfig PLAT_XEN
        bool "Xen guest image"
        default n
        depends on ((ARCH_X86_32 && !HAVE_SMP) || (ARCH_X86_64 && !HAVE_SMP) || (ARCH_ARM_32 && !HAVE_SMP) || (ARCH_ARM_64 && !HAVE_SMP))
-       depends on ((ARCH_X86_32 && !HAVE_SYSCALL) || (ARCH_X86_64 && !HAVE_SYSCALL) || (ARCH_ARM_32 && !HAVE_SYSCALL) || (ARCH_ARM_64 && !HAVE_SYSCALL))
-       depends on !HAVE_PAGING
+       depends on ((ARCH_X86_32 && !HAVE_SYSCALL) || (ARCH_X86_64) || (ARCH_ARM_32 && !HAVE_SYSCALL) || (ARCH_ARM_64 && !HAVE_SYSCALL))
        select HAVE_XENBUS
-       imply XEN_PV_BUILD_P2M
        select LIBXENHEADERS
        select LIBUKDEBUG
        select LIBUKBOOT
@@ -25,23 +23,39 @@ menuconfig PLAT_XEN
                 Create a Unikraft image that runs as a Xen guest
 
 if (PLAT_XEN)
-# Invisible option to switch between PV and PVH mode
-config XEN_HVMLITE
-	bool
-	default n if (ARCH_X86_64 || ARCH_X86_32)
-	default y
+choice
+    prompt "Xen Guest Type"
+    default XEN_PVH
+    help
+        Select the type of Xen guest support: PVH or PV.
+
+config XEN_PVH
+    bool "Xen PVH Guest"
+    depends on ARCH_X86_64
+    select LIBUKALLOC
+    select LIBUKBITOPS if ARCH_X86_64
+    select ELF64_TO_32 if ARCH_X86_64
+    select CONFIG_PAGING
+    help
+        Enable support for Xen PVH (Para-Virtualized Hardware) guests.
+        This is the default for x86_64 architectures.
 
 config XEN_PV
-	bool
-	default n if XEN_HVMLITE
-	default y
+    bool "Xen PV Guest"
+    depends on !HAVE_PAGING
+    depends on !HAVE_SYSCALL
+    imply XEN_PV_BUILD_P2M
+    help
+        Enable support for Xen PV (Para-Virtualized) guests.
+
+endchoice
 
 config XEN_PV_BUILD_P2M
-	bool "Create p2m table"
-	depends on (ARCH_X86_64 && XEN_PV)
-	default n
-	help
-		Create and initialize physical to machine (p2m) table on a PV
-		xen host
+        bool "Create p2m table"
+        depends on (ARCH_X86_64 && XEN_PV)
+        default n
+        help
+                Create and initialize physical to machine (p2m) table on a PV
+                xen host
 
 endif

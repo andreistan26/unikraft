@@ -46,10 +46,10 @@
 #include <uk/print.h>
 #include <uk/assert.h>
 
+extern struct shared_info _libxenplat_shared_info;
 #ifdef XEN_PARAVIRT
 #include <xen-x86/mm_pv.h>
 unsigned long *phys_to_machine_mapping;
-#endif
 unsigned long mfn_zero;
 pgentry_t *pt_base;
 
@@ -533,7 +533,6 @@ int unmap_frames(unsigned long va, unsigned long num_frames)
 /*
  * Mark portion of the address space read only.
  */
-extern struct shared_info _libxenplat_shared_info;
 void _init_mem_set_readonly(void *text, void *etext)
 {
     unsigned long start_address =
@@ -567,7 +566,7 @@ void _init_mem_set_readonly(void *text, void *etext)
         page = tab[offset];
         mfn = pte_to_mfn(page);
         tab = to_virt(mfn_to_pfn(mfn) << PAGE_SHIFT);
-        offset = l2_table_offset(start_address);        
+        offset = l2_table_offset(start_address);
         if ( !(tab[offset] & _PAGE_PSE) )
         {
             page = tab[offset];
@@ -580,7 +579,7 @@ void _init_mem_set_readonly(void *text, void *etext)
         if ( start_address != (unsigned long)&_libxenplat_shared_info )
         {
 #ifdef XEN_PARAVIRT
-            mmu_updates[count].ptr = 
+            mmu_updates[count].ptr =
                 ((pgentry_t)mfn << PAGE_SHIFT) + sizeof(pgentry_t) * offset;
             mmu_updates[count].val = tab[offset] & ~_PAGE_RW;
             count++;
@@ -592,7 +591,7 @@ void _init_mem_set_readonly(void *text, void *etext)
         start_address += page_size;
 
 #ifdef XEN_PARAVIRT
-        if ( count == L1_PAGETABLE_ENTRIES || 
+        if ( count == L1_PAGETABLE_ENTRIES ||
              start_address + page_size > end_address )
         {
             rc = HYPERVISOR_mmu_update(mmu_updates, count, NULL, DOMID_SELF);
@@ -731,3 +730,4 @@ void _init_mem_demand_area(unsigned long start, unsigned long page_num)
 	uk_pr_info("Demand map pfns at %lx-%lx.\n",
 		   demand_map_area_start, demand_map_area_end);
 }
+#endif

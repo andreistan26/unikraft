@@ -33,7 +33,7 @@
 #include <uk/plat/config.h>
 #include <uk/essentials.h>
 
-#if defined(__x86_64__)
+#if defined(XEN_PARAVIRT) && defined(__x86_64__)
 char irqstack[CPU_EXCEPT_STACK_SIZE] __align(UKARCH_SP_ALIGN);
 
 static struct pda {
@@ -44,7 +44,7 @@ static struct pda {
 
 void arch_init_events(void)
 {
-#if defined(__x86_64__)
+#if defined(XEN_PARAVIRT)
 	asm volatile("movl %0,%%fs ; movl %0,%%gs" :: "r" (0));
 	/* 0xc0000101 is MSR_GS_BASE */
 	wrmsrl(0xc0000101, (uint64_t) &cpu0_pda);
@@ -60,7 +60,7 @@ void arch_unbind_ports(void)
 
 void arch_fini_events(void)
 {
-#if defined(__x86_64__)
+#if defined(XEN_PARAVIRT) && defined(__x86_64__)
 	wrmsrl(0xc0000101, 0); /* 0xc0000101 is MSR_GS_BASE */
 #endif
 }

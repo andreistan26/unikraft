@@ -59,6 +59,10 @@
 #include "xs_comms.h"
 #include "xs_watch.h"
 
+#if !defined(XEN_PARAVIRT)
+#include <uk/plat/paging.h>
+#include <xen/hvm/params.h>
+#endif
 
 /*
  * Xenstore handler structure
@@ -592,6 +596,13 @@ int xs_comms_init(void)
 	struct uk_thread *thread;
 	evtchn_port_t port;
 
+#if !defined(XEN_PARAVIRT)
+	uint64_t evtchn;
+	uint64_t store_pfn;
+	struct uk_pagetable *pt;
+	int rc;
+#endif
+
 	xs_request_pool_init(&xs_req_pool);
 
 	uk_waitq_init(&xsh.waitq);
@@ -604,6 +615,7 @@ int xs_comms_init(void)
 
 	xsh.thread = thread;
 
+#if defined(XEN_PARAVIRT)
 	xsh.evtchn = HYPERVISOR_start_info->store_evtchn;
 #if defined(__i386__) || defined(__x86_64__)
 	xsh.buf = mfn_to_virt(HYPERVISOR_start_info->store_mfn);
@@ -613,12 +625,29 @@ int xs_comms_init(void)
 #else
 #error "Unsupported architecture"
 #endif
+#else /* PVH && X86_64 */
+	UK_ASSERT(hvm_get_parameter(HVM_PARAM_STORE_EVTCHN, &evtchn) == 0);
+	UK_ASSERT(hvm_get_parameter(HVM_PARAM_STORE_PFN, &store_pfn) == 0);
+
+	pt = ukplat_pt_get_active();
+	rc = ukplat_page_map(pt, store_pfn << PAGE_SHIFT, store_pfn << PAGE_SHIFT, 1, PAGE_ATTR_PROT_RW, 0);
+	if (rc == -EEXIST) {
+		rc = ukplat_page_unmap(pt, store_pfn << PAGE_SHIFT, 1, 0);
+		UK_ASSERT(rc == 0);
+
+		rc = ukplat_page_map(pt, store_pfn << PAGE_SHIFT, store_pfn << PAGE_SHIFT, 1, PAGE_ATTR_PROT_RW, 0);
+		UK_ASSERT(rc == 0);
+	}
+
+	xsh.evtchn = evtchn;
+	xsh.buf = (struct xenstore_domain_interface *)(store_pfn << PAGE_SHIFT);
+#endif
 	port = bind_evtchn(xsh.evtchn, xs_evtchn_handler, NULL);
 	UK_ASSERT(port == xsh.evtchn);
 	unmask_evtchn(xsh.evtchn);
 
-	uk_pr_info("Xenstore connection initialised on port %d, buf %p (mfn %#lx)\n",
-		   port, xsh.buf, HYPERVISOR_start_info->store_mfn);
+	uk_pr_info("Xenstore connection initialised on port %d, buf %p\n",
+		   port, xsh.buf);
 
 	return 0;
 }
