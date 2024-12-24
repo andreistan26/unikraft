@@ -64,6 +64,7 @@ $(KVM_DEBUG_IMAGE): $(KVM_ALIBS) $(KVM_ALIBS-y) $(KVM_OLIBS) $(KVM_OLIBS-y) \
 			$(LDFLAGS) $(LDFLAGS-y) \
 			$(KVM_LD_SCRIPT_FLAGS) \
 			-o $@)
+	$(call build_bootinfo,$@)
 ifeq ($(CONFIG_OPTIMIZE_PIE),y)
 	$(call build_uk_reloc,$@)
 endif
