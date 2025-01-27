@@ -36,13 +36,38 @@
 #elif (defined __ARM_32__) || (defined __ARM_64__)
 #include <xen-arm/mm.h>
 #endif
+
 #include <uk/plat/io.h>
+
+#ifdef CONFIG_PAGING
+#include <uk/config.h>
+#include <uk/plat/paging.h>
+#include <uk/assert.h>
+#endif
 
 /**
  * Implementation support for the guest physical address conversion.
- * The function support only Para-Virtualized guest.
  */
 __paddr_t ukplat_virt_to_phys(const volatile void *address)
 {
+#ifdef CONFIG_XEN_PV
 	return (__paddr_t)virt_to_mfn(address);
+#elif CONFIG_XEN_PVH
+	struct uk_pagetable *pt = ukplat_pt_get_active();
+	__vaddr_t vaddr = (__vaddr_t) address;
+	__pte_t pte;
+	unsigned int level = PAGE_LEVEL;
+	unsigned long offset;
+	int rc __maybe_unused;
+
+	rc = ukplat_pt_walk(pt, PAGE_ALIGN_DOWN(vaddr), &level, __NULL, &pte);
+	UK_ASSERT(rc == 0);
+
+	UK_ASSERT(PT_Lx_PTE_PRESENT(pte, level));
+	UK_ASSERT(PAGE_Lx_IS(pte, level));
+
+	offset = vaddr - PAGE_Lx_ALIGN_DOWN(vaddr, level);
+
+	return PT_Lx_PTE_PADDR(pte, level) + offset;
+#endif
 }

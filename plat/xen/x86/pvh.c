@@ -1,47 +1,54 @@
-#include <kvm-x86/pvh.h>
+#include <xen-x86/pvh.h>
 #include <uk/essentials.h>
 #include <uk/plat/common/lcpu.h>
 #include <uk/plat/common/bootinfo.h>
 #include <uk/plat/bootstrap.h>
 #include <uk/reloc.h>
 
+#include <stdint.h>
+#include <x86/cpu.h>
+#include <xen/xen.h>
+#include <xen/arch-x86/cpuid.h>
+#include <xen-x86/hypercall64.h>
+#include <x86/traps.h>
+
 #define pvh_crash(msg, rc)	ukplat_crash()
 
+shared_info_t *HYPERVISOR_shared_info;
 void _ukplat_entry(struct lcpu *lcpu, struct ukplat_bootinfo *bi);
+
+/* Initialize hypercalls */
+static void hpc_init(void)
+{
+    uint32_t eax, ebx, ecx, edx, base;
+
+    for ( base = XEN_CPUID_FIRST_LEAF;
+          base < XEN_CPUID_FIRST_LEAF + 0x10000; base += 0x100 )
+    {
+        cpuid(base, 0, &eax, &ebx, &ecx, &edx);
+
+        if ( (ebx == XEN_CPUID_SIGNATURE_EBX) &&
+             (ecx == XEN_CPUID_SIGNATURE_ECX) &&
+             (edx == XEN_CPUID_SIGNATURE_EDX) &&
+             ((eax - base) >= 2) )
+            break;
+    }
+
+    cpuid(base + 2, 0, &eax, &ebx, &ecx, &edx);
+    wrmsrl(ebx, (unsigned long)&hypercall_page);
+    barrier();
+}
 
 static void pvh_init_cmdline(struct ukplat_bootinfo *bi,
 			     struct pvh_start_info *pi)
 {
-	struct ukplat_memregion_desc mrd = {0};
-	char *cmdline_paddr;
-	__sz cmdline_size;
-	int rc;
-
-	cmdline_paddr = (char *)pi->cmdline_paddr;
-	if (unlikely(cmdline_paddr == NULL))
+	bi->cmdline = pi->cmdline_paddr;
+	if (unlikely(pi->cmdline_paddr == NULL))
 		return;
 
-	cmdline_size = strlen(cmdline_paddr);
-	if (cmdline_size == 0)
+	bi->cmdline_len = strlen((char *) pi->cmdline_paddr);
+	if (bi->cmdline_len == 0)
 		return;
-
-	mrd.pbase = PAGE_ALIGN_DOWN((__u64)cmdline_paddr);
-	mrd.vbase = mrd.pbase;
-	mrd.pg_off = (__off)(cmdline_paddr - mrd.pbase);
-	mrd.len = cmdline_size;
-	mrd.pg_count = PAGE_COUNT(mrd.pg_off + mrd.len);
-	mrd.type = UKPLAT_MEMRT_CMDLINE;
-	mrd.flags = UKPLAT_MEMRF_READ;
-#ifdef CONFIG_UKPLAT_MEMRNAME
-	memcpy(mrd.name, "cmdline", sizeof("cmdline"));
-#endif /* CONFIG_UKPLAT_MEMRNAME */
-
-	rc = ukplat_memregion_list_insert(&bi->mrds, &mrd);
-	if (unlikely(rc < 0))
-		pvh_crash("Unable to add cmdline mapping", rc);
-
-	bi->cmdline = (__u64)cmdline_paddr;
-	bi->cmdline_len = cmdline_size;
 }
 
 static void pvh_init_initrd(struct ukplat_bootinfo *bi,
@@ -118,9 +125,22 @@ static void pvh_init_memory(struct ukplat_bootinfo *bi,
 	}
 }
 
-void pvh_entry(struct lcpu *lcpu, struct pvh_start_info *pi)
+void libxenplat_start(struct lcpu *lcpu, struct pvh_start_info *pi)
 {
 	struct ukplat_bootinfo *bi;
+
+	/* Initialize hypercall page */
+	hpc_init();
+
+	uk_pr_info("Hypercall page enabled\n");
+
+	/* Initialize traps */
+	//traps_table_init();
+
+	HYPERVISOR_shared_info = map_shared_info(pi);
+
+	/* Setup events */
+	init_events();
 
 	bi = ukplat_bootinfo_get();
 	if (unlikely(!bi))

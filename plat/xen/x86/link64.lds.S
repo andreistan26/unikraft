@@ -34,24 +34,35 @@ PHDRS
 	text PT_LOAD FLAGS(PHDRS_PF_RX);
 	rodata PT_LOAD FLAGS(PHDRS_PF_R);
 	data PT_LOAD;
+	notes PT_NOTE;
 	tls PT_TLS;
 	tls_load PT_LOAD;
 	stack PT_GNU_STACK FLAGS(PHDRS_PF_RW);
 }
 
-ENTRY(_libxenplat_start)
 SECTIONS
 {
-	. = 0x0;
+	. = 0x10000;
 
 	_base_addr = .;		/* Symbol to represent the load base address */
 
+	.notes :
+	{
+		KEEP (*(.note.Xen))
+	} :notes
+
+
 	_text = .;			/* Text and read-only data */
 	.text : {
+		KEEP (*(.data.boot))
+		KEEP (*(.data.boot.*))
 		*(.text.boot)
+		*(.text.boot.*)
+
 		*(.text)
+		*(.text.*)
 		*(.gnu.warning)
-	} :text = 0x2000
+	} :text = 0x12000
 
 	_etext = .;			/* End of text section */
 

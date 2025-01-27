@@ -151,7 +151,7 @@ recheck:
  * TODO: This is a temporary solution used to identify non TSC clock
  * interrupts in order to stop waiting for interrupts with deadline.
  */
-extern unsigned long sched_have_pending_events;
+//extern unsigned long sched_have_pending_events;
 
 void uk_intctlr_irq_handle(struct __regs *regs, unsigned int irq)
 {
@@ -197,7 +197,7 @@ void uk_intctlr_irq_handle(struct __regs *regs, unsigned int irq)
 			 * the halting loop, and let it take care of
 			 * that work.
 			 */
-			__uk_test_and_set_bit(0, &sched_have_pending_events);
+			//__uk_test_and_set_bit(0, &sched_have_pending_events);
 
 		if (h->func(h->arg) == 1)
 			goto exit;

@@ -269,7 +269,7 @@ ENTRY(ASM_TRAP_SYM(\trapname))
 2:	/* Slow iret via hypervisor. */
 	andl  $~NMI_MASK, 16(%rsp)
 	pushq $0
-	jmp  hypercall_page + (__HYPERVISOR_iret * 32)
+	jmp  hypercall_page + __HYPERVISOR_iret * 32
 #endif
 .endm
 

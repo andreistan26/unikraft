@@ -50,6 +50,7 @@ $(XEN_DEBUG_IMAGE): $(XEN_ALIBS) $(XEN_ALIBS-y) $(XEN_OLIBS) $(XEN_OLIBS-y) \
 	       $(LD) $(LDFLAGS) $(LDFLAGS-y) $(XEN_LDFLAGS) $(XEN_LDFLAGS-y) \
 		     $(XEN_LD_SCRIPT_FLAGS) \
 		     $(XEN_IMAGE).o -o $@)
+	$(call build_bootinfo,$@)
 ifeq ($(CONFIG_OPTIMIZE_PIE),y)
 	$(call build_uk_reloc,$@)
 endif

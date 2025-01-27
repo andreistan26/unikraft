@@ -23,6 +23,8 @@
 
 /*
  * C representation of the x86/HVM start info layout.
+ *
+ * Coppied from: xen/include/public/arch-x86/hvm/start_info.h
  */
 struct pvh_start_info {
 	__u32 magic;		/* Contains the magic value 0x336ec578       */

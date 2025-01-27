@@ -234,7 +234,7 @@ static inline int ukarch_vaddr_range_isvalid(__vaddr_t start, __sz len)
 	 X86_PAT_ENTRY(6, X86_PAT_UCM) |			\
 	 X86_PAT_ENTRY(7, X86_PAT_UC))
 
-#ifndef XEN_PARAVIRT
+#ifndef CONFIG_XEN_PV
 #ifndef __ASSEMBLY__
 static inline int ukarch_pte_read(__vaddr_t pt_vaddr, unsigned int lvl,
 				  unsigned int idx, __pte_t *pte)

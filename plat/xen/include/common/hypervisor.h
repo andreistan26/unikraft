@@ -52,6 +52,8 @@
 #include <uk/plat/lcpu.h>
 
 void do_hypervisor_callback(struct __regs *regs);
+int hvm_set_parameter(int idx, uint64_t *value);
+int hvm_get_parameter(int idx, uint64_t *value);
 
 extern int in_callback;
 

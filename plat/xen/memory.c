@@ -47,7 +47,9 @@
 
 void mm_init(void)
 {
+#ifdef CONFIG_XEN_PV
 	arch_mm_init(ukplat_memallocator_get());
+#endif
 }
 
 int _ukplat_mem_mappings_init(void)
