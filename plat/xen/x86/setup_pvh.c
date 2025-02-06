@@ -47,10 +47,8 @@ void _ukplat_entry(struct lcpu *lcpu, struct ukplat_bootinfo *bi)
 	int rc;
 
 	/* Initialize trap vector table */
-	traps_table_init();
+	//traps_table_init();
 
-	/* Execute ealry init */
-	uk_boot_early_init(bi);
 
 	ukplat_lcpu_disable_irq();
 
@@ -77,6 +75,9 @@ void _ukplat_entry(struct lcpu *lcpu, struct ukplat_bootinfo *bi)
 	rc = ukplat_mem_init();
 	if (unlikely(rc))
 		UK_CRASH("Mem init failed: %d\n", rc);
+
+	/* Execute ealry init */
+	uk_boot_early_init(bi);
 
 #if defined(CONFIG_HAVE_SMP) && defined(CONFIG_UKPLAT_ACPI)
 	rc = acpi_init();

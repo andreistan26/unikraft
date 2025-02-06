@@ -54,7 +54,7 @@ int in_callback;
 shared_info_t *map_shared_info()
 {
     struct xen_add_to_physmap xatp;
-    extern struct shared_info_t _libxenplat_shared_info;
+    extern shared_info_t _libxenplat_shared_info;
 
     xatp.domid = DOMID_SELF;
     xatp.idx = 0;

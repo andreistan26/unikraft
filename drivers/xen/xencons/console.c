@@ -286,7 +286,13 @@ static int hv_console_prepare(struct ukplat_bootinfo *bi __unused)
 
 	struct uk_pagetable *pt = ukplat_pt_get_active();
 	int rc = ukplat_page_map(pt, ring_pfn << PAGE_SHIFT, ring_pfn << PAGE_SHIFT, 1, PAGE_ATTR_PROT_RW, 0);
-	UK_ASSERT(rc >= 0);
+	if (rc == -EEXIST) {
+		rc = ukplat_page_unmap(pt, ring_pfn << PAGE_SHIFT, 1, 0);
+		UK_ASSERT(rc == 0);
+		rc = ukplat_page_map(pt, ring_pfn << PAGE_SHIFT, ring_pfn << PAGE_SHIFT, 1, PAGE_ATTR_PROT_RW, 0);
+		UK_ASSERT(rc == 0);
+	}
+
 	console_ring = ((struct xencons_ring*) (ring_pfn << PAGE_SHIFT));
 #endif
 	uk_console_init(&console_dev, "XenConsole", &console_ops,
@@ -309,9 +315,7 @@ static int hv_console_prepare(struct ukplat_bootinfo *bi __unused)
 }
 #endif
 
-#if CONFIG_XEN_PV
 UK_BOOT_EARLYTAB_ENTRY(hv_console_prepare, UK_PRIO_LATEST);
 
 /* NOTE: `init_events()` should be called before calling `hv_console_init`. */
 UK_BOOT_EARLYTAB_ENTRY(hv_console_init, UK_PRIO_LATEST);
-#endif

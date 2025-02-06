@@ -216,7 +216,7 @@ void traps_table_init(void)
 
 	FILL_TRAP_GATE(divide_error,		2);
 	FILL_TRAP_GATE(debug,			3); /* runs on IST3 (cpu_crit_stack) */
-	FILL_TRAP_GATE(int3,			3); /* runs on IST3 (cpu_crit_stack) */
+
 	FILL_TRAP_GATE(overflow,		2);
 	FILL_TRAP_GATE(bounds,			2);
 	FILL_TRAP_GATE(invalid_op,		2);

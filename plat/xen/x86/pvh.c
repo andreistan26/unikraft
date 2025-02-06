@@ -42,6 +42,9 @@ static void hpc_init(void)
 static void pvh_init_cmdline(struct ukplat_bootinfo *bi,
 			     struct pvh_start_info *pi)
 {
+	struct ukplat_memregion_desc mrd = {0};
+	int rc;
+
 	bi->cmdline = pi->cmdline_paddr;
 	if (unlikely(pi->cmdline_paddr == NULL))
 		return;
@@ -49,6 +52,17 @@ static void pvh_init_cmdline(struct ukplat_bootinfo *bi,
 	bi->cmdline_len = strlen((char *) pi->cmdline_paddr);
 	if (bi->cmdline_len == 0)
 		return;
+
+	mrd.type = UKPLAT_MEMRT_RESERVED;
+	mrd.flags = UKPLAT_MEMRF_READ;
+	mrd.pbase = PAGE_ALIGN_DOWN(pi->cmdline_paddr);
+	mrd.vbase = mrd.pbase;
+	mrd.len = PAGE_ALIGN_UP(bi->cmdline_len);
+	mrd.pg_count = PAGE_COUNT(mrd.pg_off + mrd.len);
+
+	rc = ukplat_memregion_list_insert(&bi->mrds, &mrd);
+	if (unlikely(rc < 0))
+		pvh_crash("Unable to add cmdline mapping", rc);
 }
 
 static void pvh_init_initrd(struct ukplat_bootinfo *bi,
@@ -132,10 +146,8 @@ void libxenplat_start(struct lcpu *lcpu, struct pvh_start_info *pi)
 	/* Initialize hypercall page */
 	hpc_init();
 
-	uk_pr_info("Hypercall page enabled\n");
-
 	/* Initialize traps */
-	//traps_table_init();
+	traps_table_init();
 
 	HYPERVISOR_shared_info = map_shared_info(pi);
 
